@@ -216,20 +216,35 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     #officeButton {
-     
-    position: absolute;
-    top: 56px;
-    right: 116px;
-    background-color: #4fc3f7;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 16px;
+      position: absolute;
+      top: 56px;
+      right: 116px;
+      background-color: #4fc3f7;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 16px;
     }
     #officeButton:hover {
+      background-color: #0288d1;
+    }
+    #lightButton {
+      position: absolute;
+      top: 100px;
+      right: 116px;
+      background-color: #4fc3f7;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 16px;
+    }
+    #lightButton:hover {
       background-color: #0288d1;
     }
     h2 {
@@ -241,13 +256,11 @@
 <body>
   <div id="info">
     <h2>Immeuble de bureaux R+7</h2>
-    
   </div>
   <div id="controls">
-   
-    
   </div>
   <button id="officeButton">Visiter le bureau</button>
+  <button id="lightButton">Allumer l'intérieur</button>
 
   <script>
     const ETAGE_HEIGHT = 3;
@@ -260,8 +273,8 @@
       scene.background = new THREE.Color(0x87CEEB);
       
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(50, 30, 50); // Vue optimisée pour le bâtiment
-      camera.lookAt(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0); // Centre sur le bâtiment
+      camera.position.set(50, 30, 50);
+      camera.lookAt(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0);
       
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -272,9 +285,9 @@
       const controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.1;
-      controls.minDistance = 20; // Empêche de trop s'approcher
-      controls.maxDistance = 100; // Limite le zoom arrière
-      controls.target.set(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0); // Centre sur le bâtiment
+      controls.minDistance = 20;
+      controls.maxDistance = 100;
+      controls.target.set(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0);
       
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
       scene.add(ambientLight);
@@ -483,6 +496,8 @@
         metalness: 0.1
       });
 
+      let interiorLights = [];
+      let isInteriorLightOn = false;
       let officeGroup = null;
       let buildingGroup = null;
 
@@ -503,6 +518,14 @@
           } else {
             addOfficeDetails(etage, i);
           }
+
+          const light = new THREE.PointLight(0xffffff, 0, 10);
+          light.position.set(0, i * ETAGE_HEIGHT + ETAGE_HEIGHT / 2, 0);
+          light.castShadow = true;
+          light.shadow.mapSize.width = 512;
+          light.shadow.mapSize.height = 512;
+          building.add(light);
+          interiorLights.push(light);
         }
         
         addRoofDetails(building, ETAGE_COUNT * ETAGE_HEIGHT);
@@ -674,7 +697,6 @@
         building.add(roofEdge);
       }
 
-      // Garantir l'affichage initial du bâtiment
       if (officeGroup) {
         scene.remove(officeGroup);
         officeGroup = null;
@@ -943,6 +965,14 @@
         officeChair.position.set(officeWidth / 2 - 0.8, 0.6, officeDepth / 2 - 1.5);
         officeGroup.add(officeChair);
         
+        const officeLight = new THREE.PointLight(0xffffff, 0, 10);
+        officeLight.position.set(0, officeHeight - 0.5, 0);
+        officeLight.castShadow = true;
+        officeLight.shadow.mapSize.width = 512;
+        officeLight.shadow.mapSize.height = 512;
+        officeGroup.add(officeLight);
+        interiorLights.push(officeLight);
+        
         officeGroup.position.set(0, 0.1, 0);
         scene.add(officeGroup);
         
@@ -961,6 +991,15 @@
       officeButton.addEventListener('click', () => {
         createOffice();
         officeButton.textContent = officeGroup ? 'Retour au bâtiment' : 'Visiter le bureau';
+      });
+
+      const lightButton = document.getElementById('lightButton');
+      lightButton.addEventListener('click', () => {
+        isInteriorLightOn = !isInteriorLightOn;
+        interiorLights.forEach(light => {
+          light.intensity = isInteriorLightOn ? 1 : 0;
+        });
+        lightButton.textContent = isInteriorLightOn ? 'Éteindre l\'intérieur' : 'Allumer l\'intérieur';
       });
 
       function animate() {
