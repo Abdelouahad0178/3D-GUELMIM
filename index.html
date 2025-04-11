@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Immeuble de bureaux R+7 avec RDC commerce - Design amélioré</title>
+  <title>Immeuble de bureaux R+7 avec RDC commerce - Design réaliste</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -12,13 +12,13 @@
           this.camera = camera;
           this.domElement = domElement;
           this.enableDamping = true;
-          this.dampingFactor = 0.05;
-          this.rotateSpeed = 1.0;
-          this.zoomSpeed = 1.2;
-          this.panSpeed = 0.8;
+          this.dampingFactor = 0.1;
+          this.rotateSpeed = 0.5;
+          this.zoomSpeed = 1.0;
+          this.panSpeed = 0.5;
           this.target = new THREE.Vector3();
           this.minDistance = 0.5;
-          this.maxDistance = 20;
+          this.maxDistance = 15;
           let scope = this;
           let STATE = { NONE: -1, ROTATE: 0, DOLLY: 1, PAN: 2 };
           let state = STATE.NONE;
@@ -36,7 +36,12 @@
           let dollyStart = new THREE.Vector2();
           let dollyEnd = new THREE.Vector2();
           let dollyDelta = new THREE.Vector2();
-          
+          let touchStart = new THREE.Vector2();
+          let touchEnd = new THREE.Vector2();
+          let touchDelta = new THREE.Vector2();
+          let lastTouchDistance = 0;
+
+          // Gestion des événements de souris (inchangée)
           function onMouseDown(event) {
             event.preventDefault();
             if (event.button === 0) {
@@ -52,7 +57,7 @@
             document.addEventListener('mousemove', onMouseMove, false);
             document.addEventListener('mouseup', onMouseUp, false);
           }
-          
+
           function onMouseMove(event) {
             event.preventDefault();
             if (state === STATE.ROTATE) {
@@ -81,13 +86,13 @@
               scope.update();
             }
           }
-          
+
           function onMouseUp() {
             document.removeEventListener('mousemove', onMouseMove, false);
             document.removeEventListener('mouseup', onMouseUp, false);
             state = STATE.NONE;
           }
-          
+
           function onMouseWheel(event) {
             event.preventDefault();
             if (event.deltaY < 0) {
@@ -97,11 +102,66 @@
             }
             scope.update();
           }
-          
+
+          // Gestion des événements tactiles
+          function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) { // Rotation
+              touchStart.set(event.touches[0].clientX, event.touches[0].clientY);
+              state = STATE.ROTATE;
+            } else if (event.touches.length === 2) { // Zoom ou panoramique
+              const dx = event.touches[0].clientX - event.touches[1].clientX;
+              const dy = event.touches[0].clientY - event.touches[1].clientY;
+              lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+              panStart.set(
+                (event.touches[0].clientX + event.touches[1].clientX) / 2,
+                (event.touches[0].clientY + event.touches[1].clientY) / 2
+              );
+              state = STATE.DOLLY;
+            }
+          }
+
+          function onTouchMove(event) {
+            event.preventDefault();
+            if (state === STATE.ROTATE && event.touches.length === 1) {
+              touchEnd.set(event.touches[0].clientX, event.touches[0].clientY);
+              touchDelta.subVectors(touchEnd, touchStart);
+              sphericalDelta.theta -= 2 * Math.PI * touchDelta.x / scope.domElement.clientHeight * scope.rotateSpeed;
+              sphericalDelta.phi -= 2 * Math.PI * touchDelta.y / scope.domElement.clientHeight * scope.rotateSpeed;
+              touchStart.copy(touchEnd);
+              scope.update();
+            } else if (state === STATE.DOLLY && event.touches.length === 2) {
+              const dx = event.touches[0].clientX - event.touches[1].clientX;
+              const dy = event.touches[0].clientY - event.touches[1].clientY;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              panEnd.set(
+                (event.touches[0].clientX + event.touches[1].clientX) / 2,
+                (event.touches[0].clientY + event.touches[1].clientY) / 2
+              );
+              panDelta.subVectors(panEnd, panStart);
+              if (lastTouchDistance > 0) {
+                scale *= (lastTouchDistance / distance);
+                panOffset.x -= panDelta.x * 0.01 * scope.panSpeed;
+                panOffset.z -= panDelta.y * 0.01 * scope.panSpeed;
+              }
+              lastTouchDistance = distance;
+              panStart.copy(panEnd);
+              scope.update();
+            }
+          }
+
+          function onTouchEnd() {
+            state = STATE.NONE;
+            lastTouchDistance = 0;
+          }
+
           this.domElement.addEventListener('mousedown', onMouseDown, false);
           this.domElement.addEventListener('wheel', onMouseWheel, false);
           this.domElement.addEventListener('contextmenu', function(event) { event.preventDefault(); }, false);
-          
+          this.domElement.addEventListener('touchstart', onTouchStart, false);
+          this.domElement.addEventListener('touchmove', onTouchMove, false);
+          this.domElement.addEventListener('touchend', onTouchEnd, false);
+
           this.update = function() {
             let offset = new THREE.Vector3();
             position0.copy(this.camera.position).sub(this.target);
@@ -182,10 +242,20 @@
 <body>
   <div id="info">
     <h2>Immeuble de bureaux R+7</h2>
-    
+    <p>Dimensions: 9m x 49m</p>
+    <p>RDC: Commerce avec rideaux métalliques</p>
+    <p>Étages 1-7: Bureaux avec couloir central</p>
+    <p>Façades: Vitres bleues et design moderne</p>
   </div>
   <div id="controls">
-    
+    <p><strong>Sur ordinateur :</strong></p>
+    <p>Utiliser la souris pour faire pivoter la vue</p>
+    <p>Molette de la souris pour zoomer</p>
+    <p>Clic droit + déplacement pour déplacer la vue</p>
+    <p><strong>Sur mobile :</strong></p>
+    <p>Glisser avec un doigt pour tourner la vue</p>
+    <p>Pincer avec deux doigts pour zoomer</p>
+    <p>Glisser avec deux doigts pour déplacer la vue</p>
   </div>
   <button id="officeButton">Visiter le bureau</button>
 
@@ -194,7 +264,7 @@
     const BUILDING_WIDTH = 9;
     const BUILDING_LENGTH = 49;
     const ETAGE_COUNT = 8;
-    
+
     function init3DModel() {
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x87CEEB);
@@ -210,9 +280,9 @@
       
       const controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
+      controls.dampingFactor = 0.1;
       controls.minDistance = 0.5;
-      controls.maxDistance = 20;
+      controls.maxDistance = 15;
       
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
       scene.add(ambientLight);
@@ -263,9 +333,9 @@
       });
       
       const glassMaterial = new THREE.MeshPhysicalMaterial({ 
-        color: 0x2196F3, 
+        color: 0x1E88E5, // Vitres bleues
         transparent: true, 
-        opacity: 0.7,
+        opacity: 0.5,
         roughness: 0.1, 
         metalness: 0.9,
         reflectivity: 1.0,
@@ -295,6 +365,12 @@
         roughness: 0.5
       });
       
+      const bathroomDoorMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xD2B48C, // Beige clair pour la porte du WC
+        roughness: 0.5,
+        metalness: 0.3
+      });
+      
       const frameMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x424242,
         roughness: 0.3,
@@ -304,6 +380,114 @@
       const wallMaterial = new THREE.MeshStandardMaterial({ 
         color: 0xF5F5F5,
         roughness: 0.3,
+        metalness: 0.1
+      });
+
+      const marbleMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xE5E5E5,
+        roughness: 0.2,
+        metalness: 0.1
+      });
+
+      const woodMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x8B4513,
+        roughness: 0.5,
+        metalness: 0.3
+      });
+
+      const gridMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xD3D3D3,
+        roughness: 0.5,
+        metalness: 0.2
+      });
+
+      const sofaMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xB0B0B0,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const cushionMaterial1 = new THREE.MeshStandardMaterial({ 
+        color: 0xF5F5DC,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const cushionMaterial2 = new THREE.MeshStandardMaterial({ 
+        color: 0xFFFFFF,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const cushionMaterial3 = new THREE.MeshStandardMaterial({ 
+        color: 0x808080,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const chairMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFFFFFF,
+        roughness: 0.5,
+        metalness: 0.1
+      });
+
+      const cushionMaterial4 = new THREE.MeshStandardMaterial({ 
+        color: 0x333333,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const rugMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xF5F5F5,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+
+      const tableMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x1C2526,
+        roughness: 0.3,
+        metalness: 0.8
+      });
+
+      const vaseMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFFFFFF,
+        roughness: 0.2,
+        metalness: 0.1
+      });
+
+      const flowersMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFFFFE0,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+
+      const deskMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xD2B48C,
+        roughness: 0.5,
+        metalness: 0.3
+      });
+
+      const deskBaseMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x1C2526,
+        roughness: 0.3,
+        metalness: 0.8
+      });
+
+      const computerMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xD3D3D3,
+        roughness: 0.3,
+        metalness: 0.9
+      });
+
+      const officeChairMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x8B4513,
+        roughness: 0.5,
+        metalness: 0.3
+      });
+
+      const toiletMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFFFFFF,
+        roughness: 0.2,
         metalness: 0.1
       });
 
@@ -416,7 +600,7 @@
             0,
             BUILDING_LENGTH / 2 + 0.05
           );
-          etage.add(frontFrame); // Correction : frame -> frontFrame
+          etage.add(frontFrame);
         }
         
         const corridorGeometry = new THREE.BoxGeometry(1.5, ETAGE_HEIGHT - 0.2, BUILDING_LENGTH - 1);
@@ -570,150 +754,235 @@
         scene.remove(buildingGroup);
         officeGroup = new THREE.Group();
         
-        const officeWidth = BUILDING_WIDTH; // 9m
-        const officeDepth = 7;
+        const officeWidth = 6; // Largeur (mur avec porte)
+        const officeDepth = 7; // Longueur
         const officeHeight = ETAGE_HEIGHT;
         
-        // Sol du bureau
+        // Sol (béton poli gris foncé)
         const floorGeometry = new THREE.PlaneGeometry(officeWidth, officeDepth);
         const floorMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0xD3D3D3,
-          roughness: 0.5,
+          color: 0x808080,
+          roughness: 0.3,
           metalness: 0.2
         });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         officeGroup.add(floor);
         
-        // Murs du bureau
-        // Mur arrière (avec porte d'entrée)
-        const backWallGeometry = new THREE.BoxGeometry(officeWidth, officeHeight / 2, 0.2);
+        // Plafond
+        const ceilingGeometry = new THREE.PlaneGeometry(officeWidth, officeDepth);
+        const ceilingMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0xD3D3D3,
+          roughness: 0.5,
+          metalness: 0.1
+        });
+        const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.set(0, officeHeight, 0);
+        officeGroup.add(ceiling);
+        
+        // Mur arrière (avec porte à droite)
+        const backWallGeometry = new THREE.BoxGeometry(officeWidth, officeHeight, 0.2);
         const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
-        backWall.position.set(0, officeHeight / 4, -officeDepth / 2);
+        backWall.position.set(0, officeHeight / 2, -officeDepth / 2);
         officeGroup.add(backWall);
         
-        // Porte d'entrée (décalée à gauche sur le mur arrière)
-        const doorWidth = 1.5;
-        const doorGeometry = new THREE.BoxGeometry(doorWidth, 2, 0.1);
+        // Porte d'entrée (à droite, s'ouvre vers l'extérieur)
+        const doorWidth = 0.9;
+        const doorGeometry = new THREE.BoxGeometry(doorWidth, 2.1, 0.1);
         const door = new THREE.Mesh(doorGeometry, officeDoorMaterial);
-        door.position.set(-officeWidth / 2 + doorWidth / 2, -0.5, -officeDepth / 2 - 0.05);
+        door.position.set(officeWidth / 2 - doorWidth / 2 - 0.5, 1.05, -officeDepth / 2 - 0.2);
         officeGroup.add(door);
         
-        // Mur avant (avec 4 fenêtres)
-        const frontWallGeometry = new THREE.BoxGeometry(officeWidth, officeHeight / 2, 0.2);
-        const frontWall = new THREE.Mesh(frontWallGeometry, wallMaterial);
-        frontWall.position.set(0, officeHeight / 4, officeDepth / 2);
-        officeGroup.add(frontWall);
+        // Cadre de la porte pour la rendre visible
+        const doorFrameGeometry = new THREE.BoxGeometry(doorWidth + 0.2, 2.3, 0.15);
+        const doorFrame = new THREE.Mesh(doorFrameGeometry, frameMaterial);
+        doorFrame.position.set(officeWidth / 2 - doorWidth / 2 - 0.5, 1.05, -officeDepth / 2);
+        officeGroup.add(doorFrame);
         
-        // Quatre fenêtres sur la façade avant
-        const windowCount = 4;
-        const windowWidth = officeWidth / windowCount;
-        for (let i = 0; i < windowCount; i++) {
-          const windowGeometry = new THREE.BoxGeometry(windowWidth - 0.1, officeHeight / 2, 0.1);
-          const window = new THREE.Mesh(windowGeometry, glassMaterial);
-          window.position.set(
-            -officeWidth / 2 + windowWidth / 2 + i * windowWidth,
-            3 * officeHeight / 4,
-            officeDepth / 2 + 0.05
-          );
-          officeGroup.add(window);
-        }
+        // WC (à gauche en entrant, 1.5m x 2m = 3m²)
+        const bathroomWidth = 1.5;
+        const bathroomDepth = 2;
+        const bathroomFloorGeometry = new THREE.PlaneGeometry(bathroomWidth, bathroomDepth);
+        const bathroomFloor = new THREE.Mesh(bathroomFloorGeometry, floorMaterial);
+        bathroomFloor.rotation.x = -Math.PI / 2;
+        bathroomFloor.position.set(-officeWidth / 2 + bathroomWidth / 2, 0, -officeDepth / 2 + bathroomDepth / 2);
+        officeGroup.add(bathroomFloor);
         
-        // Mur gauche
-        const leftWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, officeDepth);
-        const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
-        leftWall.position.set(-officeWidth / 2, officeHeight / 2, 0);
+        // Mur droit du WC
+        const bathroomRightWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, bathroomDepth);
+        const bathroomRightWall = new THREE.Mesh(bathroomRightWallGeometry, wallMaterial);
+        bathroomRightWall.position.set(-officeWidth / 2 + bathroomWidth, officeHeight / 2, -officeDepth / 2 + bathroomDepth / 2);
+        officeGroup.add(bathroomRightWall);
+        
+        // Mur avant du WC (avec porte)
+        const bathroomFrontWallGeometry = new THREE.BoxGeometry(bathroomWidth, officeHeight, 0.2);
+        const bathroomFrontWall = new THREE.Mesh(bathroomFrontWallGeometry, wallMaterial);
+        bathroomFrontWall.position.set(-officeWidth / 2 + bathroomWidth / 2, officeHeight / 2, -officeDepth / 2 + bathroomDepth);
+        officeGroup.add(bathroomFrontWall);
+        
+        // Mur arrière du WC
+        const bathroomBackWallGeometry = new THREE.BoxGeometry(bathroomWidth, officeHeight, 0.2);
+        const bathroomBackWall = new THREE.Mesh(bathroomBackWallGeometry, wallMaterial);
+        bathroomBackWall.position.set(-officeWidth / 2 + bathroomWidth / 2, officeHeight / 2, -officeDepth / 2);
+        officeGroup.add(bathroomBackWall);
+        
+        // Mur gauche du WC
+        const bathroomLeftWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, bathroomDepth);
+        const bathroomLeftWall = new THREE.Mesh(bathroomLeftWallGeometry, wallMaterial);
+        bathroomLeftWall.position.set(-officeWidth / 2, officeHeight / 2, -officeDepth / 2 + bathroomDepth / 2);
+        officeGroup.add(bathroomLeftWall);
+        
+        // Porte du WC (sur le mur avant du WC, déplacée plus vers l'intérieur)
+        const bathroomDoorGeometry = new THREE.BoxGeometry(bathroomWidth - 0.7, 2.1, 0.1);
+        const bathroomDoor = new THREE.Mesh(bathroomDoorGeometry, bathroomDoorMaterial);
+        bathroomDoor.position.set(-officeWidth / 2 + bathroomWidth / 2, 1.05, -officeDepth / 2 + bathroomDepth - 0.3);
+        officeGroup.add(bathroomDoor);
+        
+        // Cadre de la porte du WC
+        const bathroomDoorFrameGeometry = new THREE.BoxGeometry(bathroomWidth - 0.5, 2.3, 0.2);
+        const bathroomDoorFrame = new THREE.Mesh(bathroomDoorFrameGeometry, frameMaterial);
+        bathroomDoorFrame.position.set(-officeWidth / 2 + bathroomWidth / 2, 1.05, -officeDepth / 2 + bathroomDepth);
+        officeGroup.add(bathroomDoorFrame);
+        
+        // Équipements WC (toilette + lavabo)
+        const toiletGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.6);
+        const toilet = new THREE.Mesh(toiletGeometry, toiletMaterial);
+        toilet.position.set(-officeWidth / 2 + bathroomWidth - 0.5, 0.3, -officeDepth / 2 + 0.5);
+        officeGroup.add(toilet);
+        
+        const sinkGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.4);
+        const sink = new THREE.Mesh(sinkGeometry, toiletMaterial);
+        sink.position.set(-officeWidth / 2 + bathroomWidth / 2, 0.2, -officeDepth / 2 + 1.5);
+        officeGroup.add(sink);
+        
+        // Mur avant (remplacé par une grande vitre bleue)
+        const fullWindowGeometry = new THREE.BoxGeometry(officeWidth, officeHeight - 0.2, 0.1);
+        const fullWindow = new THREE.Mesh(fullWindowGeometry, glassMaterial);
+        fullWindow.position.set(0, officeHeight / 2, officeDepth / 2 + 0.05);
+        officeGroup.add(fullWindow);
+        
+        // Stores (partiellement baissés, ajustés pour la grande vitre)
+        const blindGeometry = new THREE.BoxGeometry(officeWidth, officeHeight / 2, 0.05);
+        const blindMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0xF5F5DC,
+          roughness: 0.7,
+          metalness: 0.1
+        });
+        const blind = new THREE.Mesh(blindGeometry, blindMaterial);
+        blind.position.set(0, officeHeight * 3 / 4, officeDepth / 2);
+        officeGroup.add(blind);
+        
+        // Mur gauche (marbre avec bande en bois, après le WC)
+        const leftWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, officeDepth - bathroomDepth);
+        const leftWall = new THREE.Mesh(leftWallGeometry, marbleMaterial);
+        leftWall.position.set(-officeWidth / 2, officeHeight / 2, bathroomDepth / 2);
         officeGroup.add(leftWall);
         
-        // Mur droit (séparation avec le WC)
+        const woodStripGeometry = new THREE.BoxGeometry(0.1, officeHeight, 1);
+        const woodStrip = new THREE.Mesh(woodStripGeometry, woodMaterial);
+        woodStrip.position.set(-officeWidth / 2 - 0.05, officeHeight / 2, -officeDepth / 2 + bathroomDepth + 0.5);
+        officeGroup.add(woodStrip);
+        
+        // Mur droit (avec grille décorative)
         const rightWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, officeDepth);
         const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
         rightWall.position.set(officeWidth / 2, officeHeight / 2, 0);
         officeGroup.add(rightWall);
         
-        // WC (à droite du bureau, pièce séparée)
-        const bathroomWidth = 2;
-        const bathroomDepth = officeDepth;
-        // Sol du WC
-        const bathroomFloorGeometry = new THREE.PlaneGeometry(bathroomWidth, bathroomDepth);
-        const bathroomFloor = new THREE.Mesh(bathroomFloorGeometry, floorMaterial);
-        bathroomFloor.rotation.x = -Math.PI / 2;
-        bathroomFloor.position.set(officeWidth / 2 + bathroomWidth / 2, 0, 0);
-        officeGroup.add(bathroomFloor);
+        const gridGeometry = new THREE.BoxGeometry(0.1, officeHeight - 0.4, officeDepth - 0.4);
+        const grid = new THREE.Mesh(gridGeometry, gridMaterial);
+        grid.position.set(officeWidth / 2 + 0.05, officeHeight / 2, 0);
+        officeGroup.add(grid);
         
-        // Mur extérieur droit du WC
-        const bathroomRightWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, bathroomDepth);
-        const bathroomRightWall = new THREE.Mesh(bathroomRightWallGeometry, wallMaterial);
-        bathroomRightWall.position.set(officeWidth / 2 + bathroomWidth, officeHeight / 2, 0);
-        officeGroup.add(bathroomRightWall);
+        // Tapis (motifs losanges, ajusté aux dimensions)
+        const rugGeometry = new THREE.PlaneGeometry(4, 3);
+        const rug = new THREE.Mesh(rugGeometry, rugMaterial);
+        rug.rotation.x = -Math.PI / 2;
+        rug.position.set(0, 0.01, 0);
+        officeGroup.add(rug);
         
-        // Mur avant du WC
-        const bathroomFrontWallGeometry = new THREE.BoxGeometry(bathroomWidth, officeHeight, 0.2);
-        const bathroomFrontWall = new THREE.Mesh(bathroomFrontWallGeometry, wallMaterial);
-        bathroomFrontWall.position.set(officeWidth / 2 + bathroomWidth / 2, officeHeight / 2, officeDepth / 2);
-        officeGroup.add(bathroomFrontWall);
+        // Canapé (à gauche, après le WC)
+        const sofaGeometry = new THREE.BoxGeometry(2.5, 0.8, 1.2);
+        const sofa = new THREE.Mesh(sofaGeometry, sofaMaterial);
+        sofa.position.set(-officeWidth / 2 + bathroomWidth + 1.25, 0.4, 0);
+        officeGroup.add(sofa);
         
-        // Mur arrière du WC
-        const bathroomBackWallGeometry = new THREE.BoxGeometry(bathroomWidth, officeHeight / 2, 0.2);
-        const bathroomBackWall = new THREE.Mesh(bathroomBackWallGeometry, wallMaterial);
-        bathroomBackWall.position.set(officeWidth / 2 + bathroomWidth / 2, officeHeight / 4, -officeDepth / 2);
-        officeGroup.add(bathroomBackWall);
+        // Coussins sur le canapé
+        const cushionGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+        const cushion1 = new THREE.Mesh(cushionGeometry, cushionMaterial1);
+        cushion1.position.set(-officeWidth / 2 + bathroomWidth + 0.65, 0.7, 0);
+        officeGroup.add(cushion1);
         
-        // Porte du WC (sur le mur arrière, à droite)
-        const bathroomDoorGeometry = new THREE.BoxGeometry(0.1, 2, 1);
-        const bathroomDoor = new THREE.Mesh(bathroomDoorGeometry, officeDoorMaterial);
-        bathroomDoor.position.set(officeWidth / 2 + bathroomWidth - 0.5, -0.5, -officeDepth / 2 - 0.05);
-        officeGroup.add(bathroomDoor);
+        const cushion2 = new THREE.Mesh(cushionGeometry, cushionMaterial2);
+        cushion2.position.set(-officeWidth / 2 + bathroomWidth + 1.25, 0.7, 0);
+        officeGroup.add(cushion2);
         
-        // Équipements WC
-        const toiletGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        const toiletMaterial = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
-        const toilet = new THREE.Mesh(toiletGeometry, toiletMaterial);
-        toilet.position.set(officeWidth / 2 + bathroomWidth / 2, 0.25, 0);
-        officeGroup.add(toilet);
+        const cushion3 = new THREE.Mesh(cushionGeometry, cushionMaterial3);
+        cushion3.position.set(-officeWidth / 2 + bathroomWidth + 1.85, 0.7, 0);
+        officeGroup.add(cushion3);
         
-        // Plateau (déplacé en haut, près des fenêtres)
-        const deskGeometry = new THREE.BoxGeometry(4, 0.8, 2);
-        const deskMaterial = new THREE.MeshStandardMaterial({ color: 0x6B4E31 });
-        const openDesk = new THREE.Mesh(deskGeometry, deskMaterial);
-        openDesk.position.set(-1, 0.4, officeDepth / 2 - 1); // Près de la façade avant
-        officeGroup.add(openDesk);
+        // Chaise d'appoint (près des fenêtres)
+        const chairGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const chair = new THREE.Mesh(chairGeometry, chairMaterial);
+        chair.position.set(0, 0.5, officeDepth / 2 - 0.5);
+        officeGroup.add(chair);
         
-        const chairGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
-        const chairMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        for (let i = 0; i < 3; i++) {
-          const chair = new THREE.Mesh(chairGeometry, chairMaterial);
-          chair.position.set(-1.5 + i * 1.5, 0.5, officeDepth / 2 - 2.5); // Face au bureau
-          officeGroup.add(chair);
-        }
+        const cushion4 = new THREE.Mesh(cushionGeometry, cushionMaterial4);
+        cushion4.position.set(0, 0.8, officeDepth / 2 - 0.5);
+        officeGroup.add(cushion4);
         
-        // Bureaux de gestion (près de l'entrée)
-        const managerDeskGeometry = new THREE.BoxGeometry(1.5, 0.8, 1);
-        const managerDesk1 = new THREE.Mesh(managerDeskGeometry, deskMaterial);
-        managerDesk1.position.set(-officeWidth / 2 + 1, 0.4, -officeDepth / 2 + 1);
-        officeGroup.add(managerDesk1);
+        // Table basse (sur le tapis)
+        const tableGeometry = new THREE.BoxGeometry(1.2, 0.4, 0.8);
+        const table = new THREE.Mesh(tableGeometry, tableMaterial);
+        table.position.set(0, 0.2, 0);
+        officeGroup.add(table);
         
-        const managerChair1 = new THREE.Mesh(chairGeometry, chairMaterial);
-        managerChair1.position.set(-officeWidth / 2 + 1, 0.5, -officeDepth / 2 + 2);
-        officeGroup.add(managerChair1);
+        // Vase avec fleurs
+        const vaseGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 16);
+        const vase = new THREE.Mesh(vaseGeometry, vaseMaterial);
+        vase.position.set(0, 0.45, 0);
+        officeGroup.add(vase);
         
-        const managerDesk2 = new THREE.Mesh(managerDeskGeometry, deskMaterial);
-        managerDesk2.position.set(1, 0.4, -officeDepth / 2 + 1);
-        officeGroup.add(managerDesk2);
+        const flowersGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const flowers = new THREE.Mesh(flowersGeometry, flowersMaterial);
+        flowers.position.set(0, 0.65, 0);
+        officeGroup.add(flowers);
         
-        const managerChair2 = new THREE.Mesh(chairGeometry, chairMaterial);
-        managerChair2.position.set(1, 0.5, -officeDepth / 2 + 2);
-        officeGroup.add(managerChair2);
+        // Bureau (à droite, près des fenêtres)
+        const deskBaseGeometry = new THREE.BoxGeometry(0.8, 0.75, 1.2);
+        const deskBase = new THREE.Mesh(deskBaseGeometry, deskBaseMaterial);
+        deskBase.position.set(officeWidth / 2 - 0.8, 0.375, officeDepth / 2 - 0.6);
+        officeGroup.add(deskBase);
+        
+        const deskTopGeometry = new THREE.BoxGeometry(1.5, 0.1, 1.2);
+        const deskTop = new THREE.Mesh(deskTopGeometry, deskMaterial);
+        deskTop.position.set(officeWidth / 2 - 0.8, 0.8, officeDepth / 2 - 0.6);
+        officeGroup.add(deskTop);
+        
+        // Ordinateur sur le bureau
+        const computerGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.1);
+        const computer = new THREE.Mesh(computerGeometry, computerMaterial);
+        computer.position.set(officeWidth / 2 - 0.8, 1, officeDepth / 2 - 0.6);
+        officeGroup.add(computer);
+        
+        // Chaise de bureau
+        const officeChairGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.6);
+        const officeChair = new THREE.Mesh(officeChairGeometry, officeChairMaterial);
+        officeChair.position.set(officeWidth / 2 - 0.8, 0.6, officeDepth / 2 - 1.5);
+        officeGroup.add(officeChair);
         
         officeGroup.position.set(0, 0.1, 0);
         scene.add(officeGroup);
         
         // Configuration pour visite virtuelle
-        camera.position.set(-officeWidth / 2 + doorWidth / 2, 1.5, -officeDepth / 2 + 0.5); // Près de la porte d'entrée
-        controls.target.set(0, 1.5, 0); // Regarder vers le centre
+        camera.position.set(officeWidth / 2 - 1, 1.6, -officeDepth / 2 + 1);
+        controls.target.set(0, 1.6, 0);
         controls.minDistance = 0.5;
         controls.maxDistance = 10;
-        controls.enabled = true;
+        controls.enablePan = true;
+        controls.enableRotate = true;
+        controls.enableZoom = true;
         controls.update();
       }
 
