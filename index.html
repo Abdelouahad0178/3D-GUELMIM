@@ -41,7 +41,6 @@
           let touchDelta = new THREE.Vector2();
           let lastTouchDistance = 0;
 
-          // Gestion des événements de souris (inchangée)
           function onMouseDown(event) {
             event.preventDefault();
             if (event.button === 0) {
@@ -103,13 +102,12 @@
             scope.update();
           }
 
-          // Gestion des événements tactiles
           function onTouchStart(event) {
             event.preventDefault();
-            if (event.touches.length === 1) { // Rotation
+            if (event.touches.length === 1) {
               touchStart.set(event.touches[0].clientX, event.touches[0].clientY);
               state = STATE.ROTATE;
-            } else if (event.touches.length === 2) { // Zoom ou panoramique
+            } else if (event.touches.length === 2) {
               const dx = event.touches[0].clientX - event.touches[1].clientX;
               const dy = event.touches[0].clientY - event.touches[1].clientY;
               lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
@@ -218,17 +216,18 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     #officeButton {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background-color: #4fc3f7;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 16px;
+     
+    position: absolute;
+    top: 56px;
+    right: 116px;
+    background-color: #4fc3f7;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 16px;
     }
     #officeButton:hover {
       background-color: #0288d1;
@@ -246,6 +245,7 @@
   </div>
   <div id="controls">
    
+    
   </div>
   <button id="officeButton">Visiter le bureau</button>
 
@@ -260,7 +260,8 @@
       scene.background = new THREE.Color(0x87CEEB);
       
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(40, 25, 40);
+      camera.position.set(50, 30, 50); // Vue optimisée pour le bâtiment
+      camera.lookAt(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0); // Centre sur le bâtiment
       
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -271,8 +272,9 @@
       const controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.1;
-      controls.minDistance = 0.5;
-      controls.maxDistance = 15;
+      controls.minDistance = 20; // Empêche de trop s'approcher
+      controls.maxDistance = 100; // Limite le zoom arrière
+      controls.target.set(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0); // Centre sur le bâtiment
       
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
       scene.add(ambientLight);
@@ -323,7 +325,7 @@
       });
       
       const glassMaterial = new THREE.MeshPhysicalMaterial({ 
-        color: 0x1E88E5, // Vitres bleues
+        color: 0x1E88E5,
         transparent: true, 
         opacity: 0.5,
         roughness: 0.1, 
@@ -356,7 +358,7 @@
       });
       
       const bathroomDoorMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0xD2B48C, // Beige clair pour la porte du WC
+        color: 0xD2B48C,
         roughness: 0.5,
         metalness: 0.3
       });
@@ -672,6 +674,11 @@
         building.add(roofEdge);
       }
 
+      // Garantir l'affichage initial du bâtiment
+      if (officeGroup) {
+        scene.remove(officeGroup);
+        officeGroup = null;
+      }
       createBuilding();
       
       function addEnvironmentDetails() {
@@ -733,9 +740,9 @@
           scene.remove(officeGroup);
           officeGroup = null;
           scene.add(buildingGroup);
-          camera.position.set(40, 25, 40);
-          controls.target.set(0, 10, 0);
-          controls.minDistance = 0.5;
+          camera.position.set(50, 30, 50);
+          controls.target.set(0, ETAGE_HEIGHT * ETAGE_COUNT / 2, 0);
+          controls.minDistance = 20;
           controls.maxDistance = 100;
           controls.enabled = true;
           return;
@@ -744,11 +751,10 @@
         scene.remove(buildingGroup);
         officeGroup = new THREE.Group();
         
-        const officeWidth = 6; // Largeur (mur avec porte)
-        const officeDepth = 7; // Longueur
+        const officeWidth = 6;
+        const officeDepth = 7;
         const officeHeight = ETAGE_HEIGHT;
         
-        // Sol (béton poli gris foncé)
         const floorGeometry = new THREE.PlaneGeometry(officeWidth, officeDepth);
         const floorMaterial = new THREE.MeshStandardMaterial({ 
           color: 0x808080,
@@ -759,7 +765,6 @@
         floor.rotation.x = -Math.PI / 2;
         officeGroup.add(floor);
         
-        // Plafond
         const ceilingGeometry = new THREE.PlaneGeometry(officeWidth, officeDepth);
         const ceilingMaterial = new THREE.MeshStandardMaterial({ 
           color: 0xD3D3D3,
@@ -771,26 +776,22 @@
         ceiling.position.set(0, officeHeight, 0);
         officeGroup.add(ceiling);
         
-        // Mur arrière (avec porte à droite)
         const backWallGeometry = new THREE.BoxGeometry(officeWidth, officeHeight, 0.2);
         const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
         backWall.position.set(0, officeHeight / 2, -officeDepth / 2);
         officeGroup.add(backWall);
         
-        // Porte d'entrée (à droite, s'ouvre vers l'extérieur)
         const doorWidth = 0.9;
         const doorGeometry = new THREE.BoxGeometry(doorWidth, 2.1, 0.1);
         const door = new THREE.Mesh(doorGeometry, officeDoorMaterial);
         door.position.set(officeWidth / 2 - doorWidth / 2 - 0.5, 1.05, -officeDepth / 2 - 0.2);
         officeGroup.add(door);
         
-        // Cadre de la porte pour la rendre visible
         const doorFrameGeometry = new THREE.BoxGeometry(doorWidth + 0.2, 2.3, 0.15);
         const doorFrame = new THREE.Mesh(doorFrameGeometry, frameMaterial);
         doorFrame.position.set(officeWidth / 2 - doorWidth / 2 - 0.5, 1.05, -officeDepth / 2);
         officeGroup.add(doorFrame);
         
-        // WC (à gauche en entrant, 1.5m x 2m = 3m²)
         const bathroomWidth = 1.5;
         const bathroomDepth = 2;
         const bathroomFloorGeometry = new THREE.PlaneGeometry(bathroomWidth, bathroomDepth);
@@ -799,43 +800,36 @@
         bathroomFloor.position.set(-officeWidth / 2 + bathroomWidth / 2, 0, -officeDepth / 2 + bathroomDepth / 2);
         officeGroup.add(bathroomFloor);
         
-        // Mur droit du WC
         const bathroomRightWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, bathroomDepth);
         const bathroomRightWall = new THREE.Mesh(bathroomRightWallGeometry, wallMaterial);
         bathroomRightWall.position.set(-officeWidth / 2 + bathroomWidth, officeHeight / 2, -officeDepth / 2 + bathroomDepth / 2);
         officeGroup.add(bathroomRightWall);
         
-        // Mur avant du WC (avec porte)
         const bathroomFrontWallGeometry = new THREE.BoxGeometry(bathroomWidth, officeHeight, 0.2);
         const bathroomFrontWall = new THREE.Mesh(bathroomFrontWallGeometry, wallMaterial);
         bathroomFrontWall.position.set(-officeWidth / 2 + bathroomWidth / 2, officeHeight / 2, -officeDepth / 2 + bathroomDepth);
         officeGroup.add(bathroomFrontWall);
         
-        // Mur arrière du WC
         const bathroomBackWallGeometry = new THREE.BoxGeometry(bathroomWidth, officeHeight, 0.2);
         const bathroomBackWall = new THREE.Mesh(bathroomBackWallGeometry, wallMaterial);
         bathroomBackWall.position.set(-officeWidth / 2 + bathroomWidth / 2, officeHeight / 2, -officeDepth / 2);
         officeGroup.add(bathroomBackWall);
         
-        // Mur gauche du WC
         const bathroomLeftWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, bathroomDepth);
         const bathroomLeftWall = new THREE.Mesh(bathroomLeftWallGeometry, wallMaterial);
         bathroomLeftWall.position.set(-officeWidth / 2, officeHeight / 2, -officeDepth / 2 + bathroomDepth / 2);
         officeGroup.add(bathroomLeftWall);
         
-        // Porte du WC (sur le mur avant du WC, déplacée plus vers l'intérieur)
         const bathroomDoorGeometry = new THREE.BoxGeometry(bathroomWidth - 0.7, 2.1, 0.1);
         const bathroomDoor = new THREE.Mesh(bathroomDoorGeometry, bathroomDoorMaterial);
         bathroomDoor.position.set(-officeWidth / 2 + bathroomWidth / 2, 1.05, -officeDepth / 2 + bathroomDepth - 0.3);
         officeGroup.add(bathroomDoor);
         
-        // Cadre de la porte du WC
         const bathroomDoorFrameGeometry = new THREE.BoxGeometry(bathroomWidth - 0.5, 2.3, 0.2);
         const bathroomDoorFrame = new THREE.Mesh(bathroomDoorFrameGeometry, frameMaterial);
         bathroomDoorFrame.position.set(-officeWidth / 2 + bathroomWidth / 2, 1.05, -officeDepth / 2 + bathroomDepth);
         officeGroup.add(bathroomDoorFrame);
         
-        // Équipements WC (toilette + lavabo)
         const toiletGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.6);
         const toilet = new THREE.Mesh(toiletGeometry, toiletMaterial);
         toilet.position.set(-officeWidth / 2 + bathroomWidth - 0.5, 0.3, -officeDepth / 2 + 0.5);
@@ -846,13 +840,11 @@
         sink.position.set(-officeWidth / 2 + bathroomWidth / 2, 0.2, -officeDepth / 2 + 1.5);
         officeGroup.add(sink);
         
-        // Mur avant (remplacé par une grande vitre bleue)
         const fullWindowGeometry = new THREE.BoxGeometry(officeWidth, officeHeight - 0.2, 0.1);
         const fullWindow = new THREE.Mesh(fullWindowGeometry, glassMaterial);
         fullWindow.position.set(0, officeHeight / 2, officeDepth / 2 + 0.05);
         officeGroup.add(fullWindow);
         
-        // Stores (partiellement baissés, ajustés pour la grande vitre)
         const blindGeometry = new THREE.BoxGeometry(officeWidth, officeHeight / 2, 0.05);
         const blindMaterial = new THREE.MeshStandardMaterial({ 
           color: 0xF5F5DC,
@@ -863,7 +855,6 @@
         blind.position.set(0, officeHeight * 3 / 4, officeDepth / 2);
         officeGroup.add(blind);
         
-        // Mur gauche (marbre avec bande en bois, après le WC)
         const leftWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, officeDepth - bathroomDepth);
         const leftWall = new THREE.Mesh(leftWallGeometry, marbleMaterial);
         leftWall.position.set(-officeWidth / 2, officeHeight / 2, bathroomDepth / 2);
@@ -874,7 +865,6 @@
         woodStrip.position.set(-officeWidth / 2 - 0.05, officeHeight / 2, -officeDepth / 2 + bathroomDepth + 0.5);
         officeGroup.add(woodStrip);
         
-        // Mur droit (avec grille décorative)
         const rightWallGeometry = new THREE.BoxGeometry(0.2, officeHeight, officeDepth);
         const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
         rightWall.position.set(officeWidth / 2, officeHeight / 2, 0);
@@ -885,20 +875,17 @@
         grid.position.set(officeWidth / 2 + 0.05, officeHeight / 2, 0);
         officeGroup.add(grid);
         
-        // Tapis (motifs losanges, ajusté aux dimensions)
         const rugGeometry = new THREE.PlaneGeometry(4, 3);
         const rug = new THREE.Mesh(rugGeometry, rugMaterial);
         rug.rotation.x = -Math.PI / 2;
         rug.position.set(0, 0.01, 0);
         officeGroup.add(rug);
         
-        // Canapé (à gauche, après le WC)
         const sofaGeometry = new THREE.BoxGeometry(2.5, 0.8, 1.2);
         const sofa = new THREE.Mesh(sofaGeometry, sofaMaterial);
         sofa.position.set(-officeWidth / 2 + bathroomWidth + 1.25, 0.4, 0);
         officeGroup.add(sofa);
         
-        // Coussins sur le canapé
         const cushionGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.6);
         const cushion1 = new THREE.Mesh(cushionGeometry, cushionMaterial1);
         cushion1.position.set(-officeWidth / 2 + bathroomWidth + 0.65, 0.7, 0);
@@ -912,7 +899,6 @@
         cushion3.position.set(-officeWidth / 2 + bathroomWidth + 1.85, 0.7, 0);
         officeGroup.add(cushion3);
         
-        // Chaise d'appoint (près des fenêtres)
         const chairGeometry = new THREE.BoxGeometry(1, 1, 1);
         const chair = new THREE.Mesh(chairGeometry, chairMaterial);
         chair.position.set(0, 0.5, officeDepth / 2 - 0.5);
@@ -922,13 +908,11 @@
         cushion4.position.set(0, 0.8, officeDepth / 2 - 0.5);
         officeGroup.add(cushion4);
         
-        // Table basse (sur le tapis)
         const tableGeometry = new THREE.BoxGeometry(1.2, 0.4, 0.8);
         const table = new THREE.Mesh(tableGeometry, tableMaterial);
         table.position.set(0, 0.2, 0);
         officeGroup.add(table);
         
-        // Vase avec fleurs
         const vaseGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 16);
         const vase = new THREE.Mesh(vaseGeometry, vaseMaterial);
         vase.position.set(0, 0.45, 0);
@@ -939,7 +923,6 @@
         flowers.position.set(0, 0.65, 0);
         officeGroup.add(flowers);
         
-        // Bureau (à droite, près des fenêtres)
         const deskBaseGeometry = new THREE.BoxGeometry(0.8, 0.75, 1.2);
         const deskBase = new THREE.Mesh(deskBaseGeometry, deskBaseMaterial);
         deskBase.position.set(officeWidth / 2 - 0.8, 0.375, officeDepth / 2 - 0.6);
@@ -950,13 +933,11 @@
         deskTop.position.set(officeWidth / 2 - 0.8, 0.8, officeDepth / 2 - 0.6);
         officeGroup.add(deskTop);
         
-        // Ordinateur sur le bureau
         const computerGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.1);
         const computer = new THREE.Mesh(computerGeometry, computerMaterial);
         computer.position.set(officeWidth / 2 - 0.8, 1, officeDepth / 2 - 0.6);
         officeGroup.add(computer);
         
-        // Chaise de bureau
         const officeChairGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.6);
         const officeChair = new THREE.Mesh(officeChairGeometry, officeChairMaterial);
         officeChair.position.set(officeWidth / 2 - 0.8, 0.6, officeDepth / 2 - 1.5);
@@ -965,7 +946,6 @@
         officeGroup.position.set(0, 0.1, 0);
         scene.add(officeGroup);
         
-        // Configuration pour visite virtuelle
         camera.position.set(officeWidth / 2 - 1, 1.6, -officeDepth / 2 + 1);
         controls.target.set(0, 1.6, 0);
         controls.minDistance = 0.5;
@@ -977,6 +957,7 @@
       }
 
       const officeButton = document.getElementById('officeButton');
+      officeButton.textContent = 'Visiter le bureau';
       officeButton.addEventListener('click', () => {
         createOffice();
         officeButton.textContent = officeGroup ? 'Retour au bâtiment' : 'Visiter le bureau';
