@@ -411,6 +411,12 @@
             addOfficeDetails(etage, i);
           }
 
+          // Ajout de panneaux décoratifs horizontaux
+          const panelGeometry = new THREE.BoxGeometry(BUILDING_WIDTH - 0.2, 0.2, 0.1);
+          const panel = new THREE.Mesh(panelGeometry, frameMaterial);
+          panel.position.set(0, i * ETAGE_HEIGHT + ETAGE_HEIGHT - 0.1, BUILDING_LENGTH / 2 + 0.05);
+          building.add(panel);
+
           const light = new THREE.PointLight(0xffffff, 0, 10);
           light.position.set(0, i * ETAGE_HEIGHT + ETAGE_HEIGHT / 2, 0);
           light.castShadow = true;
@@ -555,6 +561,27 @@
           tree.position.set(x, 0, z);
           tree.castShadow = true;
           scene.add(tree);
+
+          // Ajout de buissons près des sapins
+          const bushGeometry = new THREE.SphereGeometry(0.8, 8, 8);
+          const bush = new THREE.Mesh(bushGeometry, treeMaterial);
+          bush.position.set(x + 1, 0.4, z + 1);
+          bush.castShadow = true;
+          scene.add(bush);
+        }
+
+        // Ajout de lampadaires
+        for (let i = 0; i < 2; i++) {
+          const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
+          const pole = new THREE.Mesh(poleGeometry, frameMaterial);
+          pole.position.set(i === 0 ? -BUILDING_WIDTH / 2 - 2 : BUILDING_WIDTH / 2 + 2, 1.5, BUILDING_LENGTH / 2 + 5);
+          pole.castShadow = true;
+          scene.add(pole);
+
+          const lampGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+          const lamp = new THREE.Mesh(lampGeometry, furnitureMaterial);
+          lamp.position.set(i === 0 ? -BUILDING_WIDTH / 2 - 2 : BUILDING_WIDTH / 2 + 2, 3.2, BUILDING_LENGTH / 2 + 5);
+          scene.add(lamp);
         }
       }
 
@@ -607,13 +634,13 @@
         doorFrame.position.set(officeWidth / 2 - doorWidth / 2 - 0.5, 1.05, -officeDepth / 2);
         officeGroup.add(doorFrame);
         
-        // Ajout du WC à droite de la porte
+        // WC à droite de la porte
         const toiletGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.6);
         const toilet = new THREE.Mesh(toiletGeometry, toiletMaterial);
         toilet.position.set(
-          officeWidth / 2 - doorWidth - 1.5, // À gauche de la porte (droite depuis l'intérieur)
-          0.3, // Hauteur au sol
-          -officeDepth / 2 + 0.3 // Contre le mur arrière
+          officeWidth / 2 - doorWidth - 1.5,
+          0.3,
+          -officeDepth / 2 + 0.3
         );
         officeGroup.add(toilet);
         
@@ -672,6 +699,46 @@
         const desk = new THREE.Mesh(deskGeometry, furnitureMaterial);
         desk.position.set(officeWidth / 2 - 0.8, 0.4, officeDepth / 2 - 0.6);
         officeGroup.add(desk);
+        
+        // Ajout des décorations du bureau
+        // Plante d'intérieur
+        const potGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.3, 8);
+        const pot = new THREE.Mesh(potGeometry, woodMaterial);
+        pot.position.set(officeWidth / 2 - 0.8, 0.95, officeDepth / 2 - 0.6);
+        officeGroup.add(pot);
+
+        const plantGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+        const plant = new THREE.Mesh(plantGeometry, treeMaterial);
+        plant.position.set(officeWidth / 2 - 0.8, 1.2, officeDepth / 2 - 0.6);
+        officeGroup.add(plant);
+
+        // Tableau mural
+        const frameGeometry = new THREE.BoxGeometry(1, 0.8, 0.05);
+        const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+        frame.position.set(officeWidth / 2 - doorWidth - 2.5, 1.5, -officeDepth / 2 + 0.1);
+        officeGroup.add(frame);
+
+        // Tapis
+        const rugGeometry = new THREE.PlaneGeometry(2, 1.5);
+        const rug = new THREE.Mesh(rugGeometry, furnitureMaterial);
+        rug.rotation.x = -Math.PI / 2;
+        rug.position.set(officeWidth / 2 - 0.8, 0.01, officeDepth / 2 - 0.6);
+        officeGroup.add(rug);
+
+        // Étagère
+        const shelfGeometry = new THREE.BoxGeometry(1, 0.1, 0.5);
+        const shelf1 = new THREE.Mesh(shelfGeometry, woodMaterial);
+        shelf1.position.set(-officeWidth / 2 + 0.5, 1.5, officeDepth / 2 - 0.5);
+        officeGroup.add(shelf1);
+
+        const shelf2 = new THREE.Mesh(shelfGeometry, woodMaterial);
+        shelf2.position.set(-officeWidth / 2 + 0.5, 1.8, officeDepth / 2 - 0.5);
+        officeGroup.add(shelf2);
+
+        const bookGeometry = new THREE.BoxGeometry(0.2, 0.3, 0.4);
+        const book = new THREE.Mesh(bookGeometry, furnitureMaterial);
+        book.position.set(-officeWidth / 2 + 0.5, 1.65, officeDepth / 2 - 0.5);
+        officeGroup.add(book);
         
         const officeLight = new THREE.PointLight(0xffffff, 0, 10);
         officeLight.position.set(0, officeHeight - 0.5, 0);
